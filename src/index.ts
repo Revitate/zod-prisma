@@ -2,10 +2,11 @@
 import { version } from '../package.json'
 
 import { generatorHandler } from '@prisma/generator-helper'
+import { Project } from 'ts-morph'
 import { SemicolonPreference } from 'typescript'
 import { configSchema, PrismaOptions } from './config'
-import { populateModelFile, generateBarrelFile } from './generator'
-import { Project } from 'ts-morph'
+import { generateBarrelFile, populateModelFile } from './generator'
+import { EnumModel } from './types'
 
 generatorHandler({
 	onManifest() {
@@ -19,6 +20,10 @@ generatorHandler({
 		const project = new Project()
 
 		const models = options.dmmf.datamodel.models
+		const enums: EnumModel =
+			options.dmmf.schema.enumTypes.model?.reduce((prev, enumModel) => {
+				return { ...prev, [enumModel.name]: enumModel }
+			}, {}) ?? {}
 
 		const { schemaPath } = options
 		const outputPath = options.generator.output!.value
@@ -60,7 +65,7 @@ generatorHandler({
 				{ overwrite: true }
 			)
 
-			populateModelFile(model, sourceFile, config, prismaOptions)
+			populateModelFile(model, enums, sourceFile, config, prismaOptions)
 
 			sourceFile.formatText({
 				indentSize: 2,

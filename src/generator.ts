@@ -1,5 +1,5 @@
-import path from 'path'
 import { DMMF } from '@prisma/generator-helper'
+import path from 'path'
 import {
 	ImportDeclarationStructure,
 	SourceFile,
@@ -7,15 +7,15 @@ import {
 	VariableDeclarationKind,
 } from 'ts-morph'
 import { Config, PrismaOptions } from './config'
-import { dotSlash, needsRelatedModel, useModelNames, writeArray } from './util'
 import { getJSDocs } from './docs'
-import { getZodConstructor } from './types'
+import { EnumModel, getZodConstructor } from './types'
+import { dotSlash, needsRelatedModel, useModelNames, writeArray } from './util'
 
 export const writeImportsForModel = (
 	model: DMMF.Model,
 	sourceFile: SourceFile,
 	config: Config,
-	{ schemaPath, outputPath, clientPath }: PrismaOptions
+	{ schemaPath, outputPath }: PrismaOptions
 ) => {
 	const { relatedModelName } = useModelNames(config)
 	const importList: ImportDeclarationStructure[] = [
@@ -43,19 +43,7 @@ export const writeImportsForModel = (
 			moduleSpecifier: 'decimal.js',
 		})
 	}
-
-	const enumFields = model.fields.filter((f) => f.kind === 'enum')
 	const relationFields = model.fields.filter((f) => f.kind === 'object')
-	const relativePath = path.relative(outputPath, clientPath)
-
-	if (enumFields.length > 0) {
-		importList.push({
-			kind: StructureKind.ImportDeclaration,
-			isTypeOnly: enumFields.length === 0,
-			moduleSpecifier: dotSlash(relativePath),
-			namedImports: enumFields.map((f) => f.type),
-		})
-	}
 
 	if (config.relationModel !== false && relationFields.length > 0) {
 		const filteredFields = relationFields.filter((f) => f.type !== model.name)
@@ -126,6 +114,7 @@ export const writeTypeSpecificSchemas = (
 
 export const generateSchemaForModel = (
 	model: DMMF.Model,
+	enums: EnumModel,
 	sourceFile: SourceFile,
 	config: Config,
 	_prismaOptions: PrismaOptions
@@ -148,7 +137,7 @@ export const generateSchemaForModel = (
 								.forEach((field) => {
 									writeArray(writer, getJSDocs(field.documentation))
 									writer
-										.write(`${field.name}: ${getZodConstructor(field)}`)
+										.write(`${field.name}: ${getZodConstructor(field, enums)}`)
 										.write(',')
 										.newLine()
 								})
@@ -162,6 +151,7 @@ export const generateSchemaForModel = (
 
 export const generateRelatedSchemaForModel = (
 	model: DMMF.Model,
+	enums: EnumModel,
 	sourceFile: SourceFile,
 	config: Config,
 	_prismaOptions: PrismaOptions
@@ -212,6 +202,7 @@ export const generateRelatedSchemaForModel = (
 									.write(
 										`${field.name}: ${getZodConstructor(
 											field,
+											enums,
 											relatedModelName
 										)}`
 									)
@@ -228,15 +219,16 @@ export const generateRelatedSchemaForModel = (
 
 export const populateModelFile = (
 	model: DMMF.Model,
+	enums: EnumModel,
 	sourceFile: SourceFile,
 	config: Config,
 	prismaOptions: PrismaOptions
 ) => {
 	writeImportsForModel(model, sourceFile, config, prismaOptions)
 	writeTypeSpecificSchemas(model, sourceFile, config, prismaOptions)
-	generateSchemaForModel(model, sourceFile, config, prismaOptions)
+	generateSchemaForModel(model, enums, sourceFile, config, prismaOptions)
 	if (needsRelatedModel(model, config))
-		generateRelatedSchemaForModel(model, sourceFile, config, prismaOptions)
+		generateRelatedSchemaForModel(model, enums, sourceFile, config, prismaOptions)
 }
 
 export const generateBarrelFile = (models: DMMF.Model[], indexFile: SourceFile) => {

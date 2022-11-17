@@ -27,3 +27,13 @@ model Post {
   authorId Int
   author   User @relation(fields: [authorId], references: [id])
 }
+
+model Data {
+  id   Int      @id @default(autoincrement())
+  type DataType
+}
+
+enum DataType {
+  about
+  contact
+}

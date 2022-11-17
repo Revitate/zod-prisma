@@ -1,10 +1,10 @@
 'use strict';
 
 var generatorHelper = require('@prisma/generator-helper');
+var tsMorph = require('ts-morph');
 var typescript = require('typescript');
 var zod = require('zod');
 var path = require('path');
-var tsMorph = require('ts-morph');
 var parenthesis = require('parenthesis');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
@@ -81,7 +81,7 @@ const computeModifiers = docString => {
   return getZodDocElements(docString).filter(each => !each.startsWith('custom('));
 };
 
-const getZodConstructor = (field, getRelatedModelName = name => name.toString()) => {
+const getZodConstructor = (field, enums, getRelatedModelName = name => name.toString()) => {
   let zodType = 'z.unknown()';
   let extraModifiers = [''];
 
@@ -126,7 +126,7 @@ const getZodConstructor = (field, getRelatedModelName = name => name.toString())
         break;
     }
   } else if (field.kind === 'enum') {
-    zodType = `z.nativeEnum(${field.type})`;
+    zodType = `z.enum([${enums[field.type].values.map(value => `'${value}'`).join(', ')}])`;
   } else if (field.kind === 'object') {
     zodType = getRelatedModelName(field.type);
   }
@@ -147,8 +147,7 @@ const getZodConstructor = (field, getRelatedModelName = name => name.toString())
 
 const writeImportsForModel = (model, sourceFile, config, {
   schemaPath,
-  outputPath,
-  clientPath
+  outputPath
 }) => {
   const {
     relatedModelName
@@ -175,18 +174,7 @@ const writeImportsForModel = (model, sourceFile, config, {
     });
   }
 
-  const enumFields = model.fields.filter(f => f.kind === 'enum');
   const relationFields = model.fields.filter(f => f.kind === 'object');
-  const relativePath = path__default["default"].relative(outputPath, clientPath);
-
-  if (enumFields.length > 0) {
-    importList.push({
-      kind: tsMorph.StructureKind.ImportDeclaration,
-      isTypeOnly: enumFields.length === 0,
-      moduleSpecifier: dotSlash(relativePath),
-      namedImports: enumFields.map(f => f.type)
-    });
-  }
 
   if (config.relationModel !== false && relationFields.length > 0) {
     const filteredFields = relationFields.filter(f => f.type !== model.name);
@@ -217,7 +205,7 @@ const writeTypeSpecificSchemas = (model, sourceFile, config, _prismaOptions) => 
     });
   }
 };
-const generateSchemaForModel = (model, sourceFile, config, _prismaOptions) => {
+const generateSchemaForModel = (model, enums, sourceFile, config, _prismaOptions) => {
   const {
     modelName
   } = useModelNames(config);
@@ -232,7 +220,7 @@ const generateSchemaForModel = (model, sourceFile, config, _prismaOptions) => {
         writer.write('z.object(').inlineBlock(() => {
           model.fields.filter(f => f.kind !== 'object').forEach(field => {
             writeArray(writer, getJSDocs(field.documentation));
-            writer.write(`${field.name}: ${getZodConstructor(field)}`).write(',').newLine();
+            writer.write(`${field.name}: ${getZodConstructor(field, enums)}`).write(',').newLine();
           });
         }).write(')');
       }
@@ -240,7 +228,7 @@ const generateSchemaForModel = (model, sourceFile, config, _prismaOptions) => {
     }]
   });
 };
-const generateRelatedSchemaForModel = (model, sourceFile, config, _prismaOptions) => {
+const generateRelatedSchemaForModel = (model, enums, sourceFile, config, _prismaOptions) => {
   const {
     modelName,
     relatedModelName
@@ -268,7 +256,7 @@ const generateRelatedSchemaForModel = (model, sourceFile, config, _prismaOptions
         writer.write(`z.lazy(() => ${modelName(model.name)}.extend(`).inlineBlock(() => {
           relationFields.forEach(field => {
             writeArray(writer, getJSDocs(field.documentation));
-            writer.write(`${field.name}: ${getZodConstructor(field, relatedModelName)}`).write(',').newLine();
+            writer.write(`${field.name}: ${getZodConstructor(field, enums, relatedModelName)}`).write(',').newLine();
           });
         }).write('))');
       }
@@ -276,11 +264,11 @@ const generateRelatedSchemaForModel = (model, sourceFile, config, _prismaOptions
     }]
   });
 };
-const populateModelFile = (model, sourceFile, config, prismaOptions) => {
+const populateModelFile = (model, enums, sourceFile, config, prismaOptions) => {
   writeImportsForModel(model, sourceFile, config, prismaOptions);
   writeTypeSpecificSchemas(model, sourceFile, config);
-  generateSchemaForModel(model, sourceFile, config);
-  if (needsRelatedModel(model, config)) generateRelatedSchemaForModel(model, sourceFile, config);
+  generateSchemaForModel(model, enums, sourceFile, config);
+  if (needsRelatedModel(model, config)) generateRelatedSchemaForModel(model, enums, sourceFile, config);
 };
 const generateBarrelFile = (models, indexFile) => {
   models.forEach(model => indexFile.addExportDeclaration({
@@ -299,8 +287,15 @@ generatorHelper.generatorHandler({
   },
 
   onGenerate(options) {
+    var _options$dmmf$schema$, _options$dmmf$schema$2;
+
     const project = new tsMorph.Project();
     const models = options.dmmf.datamodel.models;
+    const enums = (_options$dmmf$schema$ = (_options$dmmf$schema$2 = options.dmmf.schema.enumTypes.model) == null ? void 0 : _options$dmmf$schema$2.reduce((prev, enumModel) => {
+      return { ...prev,
+        [enumModel.name]: enumModel
+      };
+    }, {})) != null ? _options$dmmf$schema$ : {};
     const {
       schemaPath
     } = options;
@@ -327,7 +322,7 @@ generatorHelper.generatorHandler({
       const sourceFile = project.createSourceFile(`${outputPath}/${model.name.toLowerCase()}.ts`, {}, {
         overwrite: true
       });
-      populateModelFile(model, sourceFile, config, prismaOptions);
+      populateModelFile(model, enums, sourceFile, config, prismaOptions);
       sourceFile.formatText({
         indentSize: 2,
         convertTabsToSpaces: true,

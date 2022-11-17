@@ -7,6 +7,7 @@ import { Project } from 'ts-morph'
 import { SemicolonPreference } from 'typescript'
 import { configSchema, PrismaOptions } from '../../config'
 import { generateBarrelFile, populateModelFile } from '../../generator'
+import { EnumModel } from '../../types'
 
 jest.setTimeout(10000)
 
@@ -65,6 +66,11 @@ const ftForDir = (dir: string) => async () => {
 
 	expect(actualIndexContents).toStrictEqual(expectedIndexContents)
 
+	const enums: EnumModel =
+		dmmf.schema.enumTypes.model?.reduce((prev, enumModel) => {
+			return { ...prev, [enumModel.name]: enumModel }
+		}, {}) ?? {}
+
 	await Promise.all(
 		dmmf.datamodel.models.map(async (model) => {
 			const sourceFile = project.createSourceFile(
@@ -73,7 +79,7 @@ const ftForDir = (dir: string) => async () => {
 				{ overwrite: true }
 			)
 
-			populateModelFile(model, sourceFile, config, prismaOptions)
+			populateModelFile(model, enums, sourceFile, config, prismaOptions)
 
 			sourceFile.formatText({
 				indentSize: 2,
