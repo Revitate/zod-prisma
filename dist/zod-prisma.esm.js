@@ -1,15 +1,9 @@
-'use strict';
-
-var generatorHelper = require('@prisma/generator-helper');
-var tsMorph = require('ts-morph');
-var typescript = require('typescript');
-var zod = require('zod');
-var path = require('path');
-var parenthesis = require('parenthesis');
-
-function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
-
-var path__default = /*#__PURE__*/_interopDefaultLegacy(path);
+import { generatorHandler } from '@prisma/generator-helper';
+import { StructureKind, VariableDeclarationKind, Project } from 'ts-morph';
+import { SemicolonPreference } from 'typescript';
+import { z } from 'zod';
+import path from 'path';
+import { parse, stringify } from 'parenthesis';
 
 function _extends() {
   _extends = Object.assign || function (target) {
@@ -31,15 +25,15 @@ function _extends() {
 
 var version = "0.5.5";
 
-var configBoolean = /*#__PURE__*/zod.z["enum"](['true', 'false']).transform(function (arg) {
+var configBoolean = /*#__PURE__*/z["enum"](['true', 'false']).transform(function (arg) {
   return JSON.parse(arg);
 });
-var configSchema = /*#__PURE__*/zod.z.object({
-  relationModel: /*#__PURE__*/configBoolean["default"]('true').or( /*#__PURE__*/zod.z.literal('default')),
-  modelSuffix: /*#__PURE__*/zod.z.string()["default"]('Model'),
-  modelCase: /*#__PURE__*/zod.z["enum"](['PascalCase', 'camelCase'])["default"]('PascalCase'),
+var configSchema = /*#__PURE__*/z.object({
+  relationModel: /*#__PURE__*/configBoolean["default"]('true').or( /*#__PURE__*/z.literal('default')),
+  modelSuffix: /*#__PURE__*/z.string()["default"]('Model'),
+  modelCase: /*#__PURE__*/z["enum"](['PascalCase', 'camelCase'])["default"]('PascalCase'),
   useDecimalJs: /*#__PURE__*/configBoolean["default"]('false'),
-  imports: /*#__PURE__*/zod.z.string().optional(),
+  imports: /*#__PURE__*/z.string().optional(),
   prismaJsonNullability: /*#__PURE__*/configBoolean["default"]('true')
 });
 
@@ -121,10 +115,10 @@ var getZodDocElements = function getZodDocElements(docString) {
     return line.trimStart().slice(4);
   }).flatMap(function (line) {
     return (// Array.from(line.matchAll(/\.([^().]+\(.*?\))/g), (m) => m.slice(1)).flat()
-      chunk(parenthesis.parse(line), 2).slice(0, -1).map(function (_ref) {
+      chunk(parse(line), 2).slice(0, -1).map(function (_ref) {
         var each = _ref[0],
             contents = _ref[1];
-        return each.replace(/\)?\./, '') + (parenthesis.stringify(contents) + ")");
+        return each.replace(/\)?\./, '') + (stringify(contents) + ")");
       })
     );
   });
@@ -222,16 +216,16 @@ var writeImportsForModel = function writeImportsForModel(model, sourceFile, conf
       relatedModelName = _useModelNames.relatedModelName;
 
   var importList = [{
-    kind: tsMorph.StructureKind.ImportDeclaration,
+    kind: StructureKind.ImportDeclaration,
     namespaceImport: 'z',
     moduleSpecifier: 'zod'
   }];
 
   if (config.imports) {
     importList.push({
-      kind: tsMorph.StructureKind.ImportDeclaration,
+      kind: StructureKind.ImportDeclaration,
       namespaceImport: 'imports',
-      moduleSpecifier: dotSlash(path__default["default"].relative(outputPath, path__default["default"].resolve(path__default["default"].dirname(schemaPath), config.imports)))
+      moduleSpecifier: dotSlash(path.relative(outputPath, path.resolve(path.dirname(schemaPath), config.imports)))
     });
   }
 
@@ -239,7 +233,7 @@ var writeImportsForModel = function writeImportsForModel(model, sourceFile, conf
     return f.type === 'Decimal';
   })) {
     importList.push({
-      kind: tsMorph.StructureKind.ImportDeclaration,
+      kind: StructureKind.ImportDeclaration,
       namedImports: ['Decimal'],
       moduleSpecifier: 'decimal.js'
     });
@@ -256,7 +250,7 @@ var writeImportsForModel = function writeImportsForModel(model, sourceFile, conf
 
     if (filteredFields.length > 0) {
       importList.push({
-        kind: tsMorph.StructureKind.ImportDeclaration,
+        kind: StructureKind.ImportDeclaration,
         moduleSpecifier: './index',
         namedImports: Array.from(new Set(filteredFields.flatMap(function (f) {
           return ["Complete" + f.type, relatedModelName(f.type)];
@@ -291,7 +285,7 @@ var generateSchemaForModel = function generateSchemaForModel(model, enums, sourc
       modelName = _useModelNames2.modelName;
 
   sourceFile.addVariableStatement({
-    declarationKind: tsMorph.VariableDeclarationKind.Const,
+    declarationKind: VariableDeclarationKind.Const,
     isExported: true,
     leadingTrivia: function leadingTrivia(writer) {
       return writer.blankLineIfLastNot();
@@ -335,7 +329,7 @@ var generateRelatedSchemaForModel = function generateRelatedSchemaForModel(model
     return writeArray(writer, ['', '/**', " * " + relatedModelName(model.name) + " contains all relations on your model in addition to the scalars", ' *', ' * NOTE: Lazy required in case of potential circular dependencies within schema', ' */']);
   });
   sourceFile.addVariableStatement({
-    declarationKind: tsMorph.VariableDeclarationKind.Const,
+    declarationKind: VariableDeclarationKind.Const,
     isExported: true,
     declarations: [{
       name: relatedModelName(model.name),
@@ -365,7 +359,7 @@ var generateBarrelFile = function generateBarrelFile(models, indexFile) {
   });
 };
 
-generatorHelper.generatorHandler({
+generatorHandler({
   onManifest: function onManifest() {
     return {
       version: version,
@@ -376,7 +370,7 @@ generatorHelper.generatorHandler({
   onGenerate: function onGenerate(options) {
     var _options$dmmf$schema$, _options$dmmf$schema$2;
 
-    var project = new tsMorph.Project();
+    var project = new Project();
     var models = options.dmmf.datamodel.models;
     var enums = (_options$dmmf$schema$ = (_options$dmmf$schema$2 = options.dmmf.schema.enumTypes.model) == null ? void 0 : _options$dmmf$schema$2.reduce(function (prev, enumModel) {
       var _extends2;
@@ -403,7 +397,7 @@ generatorHelper.generatorHandler({
     indexFile.formatText({
       indentSize: 2,
       convertTabsToSpaces: true,
-      semicolons: typescript.SemicolonPreference.Remove
+      semicolons: SemicolonPreference.Remove
     });
     models.forEach(function (model) {
       var sourceFile = project.createSourceFile(outputPath + "/" + model.name.toLowerCase() + ".ts", {}, {
@@ -413,10 +407,10 @@ generatorHelper.generatorHandler({
       sourceFile.formatText({
         indentSize: 2,
         convertTabsToSpaces: true,
-        semicolons: typescript.SemicolonPreference.Remove
+        semicolons: SemicolonPreference.Remove
       });
     });
     return project.save();
   }
 });
-//# sourceMappingURL=zod-prisma.cjs.development.js.map
+//# sourceMappingURL=zod-prisma.esm.js.map
