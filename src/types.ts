@@ -1,9 +1,11 @@
 import type { DMMF } from '@prisma/generator-helper'
+import { Config } from './config'
 import { computeCustomSchema, computeModifiers } from './docs'
 
 export const getZodConstructor = (
 	field: DMMF.Field,
 	enums: EnumModel,
+	config: Config,
 	getRelatedModelName = (name: string | DMMF.SchemaEnum | DMMF.OutputType | DMMF.SchemaArg) =>
 		name.toString()
 ) => {
@@ -31,7 +33,13 @@ export const getZodConstructor = (
 				zodType = 'z.number()'
 				break
 			case 'Json':
-				zodType = 'jsonSchema'
+				if (field.name.endsWith('Tr')) {
+					zodType = `z.object({${config.languages
+						.map((lang) => `${lang}: z.string()`)
+						.join(', ')}})`
+				} else {
+					zodType = 'jsonSchema'
+				}
 				break
 			case 'Boolean':
 				zodType = 'z.boolean()'

@@ -11,146 +11,80 @@ function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'defau
 
 var path__default = /*#__PURE__*/_interopDefaultLegacy(path);
 
-function _extends() {
-  _extends = Object.assign || function (target) {
-    for (var i = 1; i < arguments.length; i++) {
-      var source = arguments[i];
+var version = "0.5.6";
 
-      for (var key in source) {
-        if (Object.prototype.hasOwnProperty.call(source, key)) {
-          target[key] = source[key];
-        }
-      }
-    }
-
-    return target;
-  };
-
-  return _extends.apply(this, arguments);
-}
-
-var version = "0.5.5";
-
-var configBoolean = /*#__PURE__*/zod.z["enum"](['true', 'false']).transform(function (arg) {
-  return JSON.parse(arg);
-});
-var configSchema = /*#__PURE__*/zod.z.object({
-  relationModel: /*#__PURE__*/configBoolean["default"]('true').or( /*#__PURE__*/zod.z.literal('default')),
-  modelSuffix: /*#__PURE__*/zod.z.string()["default"]('Model'),
-  modelCase: /*#__PURE__*/zod.z["enum"](['PascalCase', 'camelCase'])["default"]('PascalCase'),
-  useDecimalJs: /*#__PURE__*/configBoolean["default"]('false'),
+const configBoolean = /*#__PURE__*/zod.z.enum(['true', 'false']).transform(arg => JSON.parse(arg));
+const configSchema = /*#__PURE__*/zod.z.object({
+  relationModel: /*#__PURE__*/configBoolean.default('true').or( /*#__PURE__*/zod.z.literal('default')),
+  modelSuffix: /*#__PURE__*/zod.z.string().default('Model'),
+  modelCase: /*#__PURE__*/zod.z.enum(['PascalCase', 'camelCase']).default('PascalCase'),
+  useDecimalJs: /*#__PURE__*/configBoolean.default('false'),
   imports: /*#__PURE__*/zod.z.string().optional(),
-  prismaJsonNullability: /*#__PURE__*/configBoolean["default"]('true')
+  prismaJsonNullability: /*#__PURE__*/configBoolean.default('true'),
+  languages: /*#__PURE__*/zod.z.preprocess(v => typeof v === 'string' ? v.split(',') : ['en'], zod.z.array(zod.z.string())).default(['en'])
 });
 
-var writeArray = function writeArray(writer, array, newLine) {
-  if (newLine === void 0) {
-    newLine = true;
-  }
-
-  return array.forEach(function (line) {
-    return writer.write(line).conditionalNewLine(newLine);
-  });
-};
-var useModelNames = function useModelNames(_ref) {
-  var modelCase = _ref.modelCase,
-      modelSuffix = _ref.modelSuffix,
-      relationModel = _ref.relationModel;
-
-  var formatModelName = function formatModelName(name, prefix) {
-    if (prefix === void 0) {
-      prefix = '';
-    }
-
+const writeArray = (writer, array, newLine = true) => array.forEach(line => writer.write(line).conditionalNewLine(newLine));
+const useModelNames = ({
+  modelCase,
+  modelSuffix,
+  relationModel
+}) => {
+  const formatModelName = (name, prefix = '') => {
     if (modelCase === 'camelCase') {
       name = name.slice(0, 1).toLowerCase() + name.slice(1);
     }
 
-    return "" + prefix + name + modelSuffix;
+    return `${prefix}${name}${modelSuffix}`;
   };
 
   return {
-    modelName: function modelName(name) {
-      return formatModelName(name, relationModel === 'default' ? '_' : '');
-    },
-    relatedModelName: function relatedModelName(name) {
-      return formatModelName(relationModel === 'default' ? name.toString() : "Related" + name.toString());
-    }
+    modelName: name => formatModelName(name, relationModel === 'default' ? '_' : ''),
+    relatedModelName: name => formatModelName(relationModel === 'default' ? name.toString() : `Related${name.toString()}`)
   };
 };
-var needsRelatedModel = function needsRelatedModel(model, config) {
-  return model.fields.some(function (field) {
-    return field.kind === 'object';
-  }) && config.relationModel !== false;
-};
-var chunk = function chunk(input, size) {
-  return input.reduce(function (arr, item, idx) {
-    return idx % size === 0 ? [].concat(arr, [[item]]) : [].concat(arr.slice(0, -1), [[].concat(arr.slice(-1)[0], [item])]);
+const needsRelatedModel = (model, config) => model.fields.some(field => field.kind === 'object') && config.relationModel !== false;
+const chunk = (input, size) => {
+  return input.reduce((arr, item, idx) => {
+    return idx % size === 0 ? [...arr, [item]] : [...arr.slice(0, -1), [...arr.slice(-1)[0], item]];
   }, []);
 };
-var dotSlash = function dotSlash(input) {
-  var converted = input.replace(/^\\\\\?\\/, '').replace(/\\/g, '/').replace(/\/\/+/g, '/');
-  if (converted.includes("/node_modules/")) return converted.split("/node_modules/").slice(-1)[0];
-  if (converted.startsWith("../")) return converted;
+const dotSlash = input => {
+  const converted = input.replace(/^\\\\\?\\/, '').replace(/\\/g, '/').replace(/\/\/+/g, '/');
+  if (converted.includes(`/node_modules/`)) return converted.split(`/node_modules/`).slice(-1)[0];
+  if (converted.startsWith(`../`)) return converted;
   return './' + converted;
 };
 
-var getJSDocs = function getJSDocs(docString) {
-  var lines = [];
+const getJSDocs = docString => {
+  const lines = [];
 
   if (docString) {
-    var docLines = docString.split('\n').filter(function (dL) {
-      return !dL.trimStart().startsWith('@zod');
-    });
+    const docLines = docString.split('\n').filter(dL => !dL.trimStart().startsWith('@zod'));
 
     if (docLines.length) {
       lines.push('/**');
-      docLines.forEach(function (dL) {
-        return lines.push(" * " + dL);
-      });
+      docLines.forEach(dL => lines.push(` * ${dL}`));
       lines.push(' */');
     }
   }
 
   return lines;
 };
-var getZodDocElements = function getZodDocElements(docString) {
-  return docString.split('\n').filter(function (line) {
-    return line.trimStart().startsWith('@zod');
-  }).map(function (line) {
-    return line.trimStart().slice(4);
-  }).flatMap(function (line) {
-    return (// Array.from(line.matchAll(/\.([^().]+\(.*?\))/g), (m) => m.slice(1)).flat()
-      chunk(parenthesis.parse(line), 2).slice(0, -1).map(function (_ref) {
-        var each = _ref[0],
-            contents = _ref[1];
-        return each.replace(/\)?\./, '') + (parenthesis.stringify(contents) + ")");
-      })
-    );
-  });
-};
-var computeCustomSchema = function computeCustomSchema(docString) {
+const getZodDocElements = docString => docString.split('\n').filter(line => line.trimStart().startsWith('@zod')).map(line => line.trimStart().slice(4)).flatMap(line => // Array.from(line.matchAll(/\.([^().]+\(.*?\))/g), (m) => m.slice(1)).flat()
+chunk(parenthesis.parse(line), 2).slice(0, -1).map(([each, contents]) => each.replace(/\)?\./, '') + `${parenthesis.stringify(contents)})`));
+const computeCustomSchema = docString => {
   var _getZodDocElements$fi;
 
-  return (_getZodDocElements$fi = getZodDocElements(docString).find(function (modifier) {
-    return modifier.startsWith('custom(');
-  })) == null ? void 0 : _getZodDocElements$fi.slice(7).slice(0, -1);
+  return (_getZodDocElements$fi = getZodDocElements(docString).find(modifier => modifier.startsWith('custom('))) == null ? void 0 : _getZodDocElements$fi.slice(7).slice(0, -1);
 };
-var computeModifiers = function computeModifiers(docString) {
-  return getZodDocElements(docString).filter(function (each) {
-    return !each.startsWith('custom(');
-  });
+const computeModifiers = docString => {
+  return getZodDocElements(docString).filter(each => !each.startsWith('custom('));
 };
 
-var getZodConstructor = function getZodConstructor(field, enums, getRelatedModelName) {
-  if (getRelatedModelName === void 0) {
-    getRelatedModelName = function getRelatedModelName(name) {
-      return name.toString();
-    };
-  }
-
-  var zodType = 'z.unknown()';
-  var extraModifiers = [''];
+const getZodConstructor = (field, enums, config, getRelatedModelName = name => name.toString()) => {
+  let zodType = 'z.unknown()';
+  let extraModifiers = [''];
 
   if (field.kind === 'scalar') {
     switch (field.type) {
@@ -180,7 +114,12 @@ var getZodConstructor = function getZodConstructor(field, enums, getRelatedModel
         break;
 
       case 'Json':
-        zodType = 'jsonSchema';
+        if (field.name.endsWith('Tr')) {
+          zodType = `z.object({${config.languages.map(lang => `${lang}: z.string()`).join(', ')}})`;
+        } else {
+          zodType = 'jsonSchema';
+        }
+
         break;
 
       case 'Boolean':
@@ -193,9 +132,7 @@ var getZodConstructor = function getZodConstructor(field, enums, getRelatedModel
         break;
     }
   } else if (field.kind === 'enum') {
-    zodType = "z.enum([" + enums[field.type].values.map(function (value) {
-      return "'" + value + "'";
-    }).join(', ') + "])";
+    zodType = `z.enum([${enums[field.type].values.map(value => `'${value}'`).join(', ')}])`;
   } else if (field.kind === 'object') {
     zodType = getRelatedModelName(field.type);
   }
@@ -206,22 +143,22 @@ var getZodConstructor = function getZodConstructor(field, enums, getRelatedModel
     var _computeCustomSchema;
 
     zodType = (_computeCustomSchema = computeCustomSchema(field.documentation)) != null ? _computeCustomSchema : zodType;
-    extraModifiers.push.apply(extraModifiers, computeModifiers(field.documentation));
+    extraModifiers.push(...computeModifiers(field.documentation));
   }
 
   if (!field.isRequired && field.type !== 'Json') extraModifiers.push('nullish()'); // if (field.hasDefaultValue) extraModifiers.push('optional()')
 
-  return "" + zodType + extraModifiers.join('.');
+  return `${zodType}${extraModifiers.join('.')}`;
 };
 
-var writeImportsForModel = function writeImportsForModel(model, sourceFile, config, _ref) {
-  var schemaPath = _ref.schemaPath,
-      outputPath = _ref.outputPath;
-
-  var _useModelNames = useModelNames(config),
-      relatedModelName = _useModelNames.relatedModelName;
-
-  var importList = [{
+const writeImportsForModel = (model, sourceFile, config, {
+  schemaPath,
+  outputPath
+}) => {
+  const {
+    relatedModelName
+  } = useModelNames(config);
+  const importList = [{
     kind: tsMorph.StructureKind.ImportDeclaration,
     namespaceImport: 'z',
     moduleSpecifier: 'zod'
@@ -235,9 +172,7 @@ var writeImportsForModel = function writeImportsForModel(model, sourceFile, conf
     });
   }
 
-  if (config.useDecimalJs && model.fields.some(function (f) {
-    return f.type === 'Decimal';
-  })) {
+  if (config.useDecimalJs && model.fields.some(f => f.type === 'Decimal')) {
     importList.push({
       kind: tsMorph.StructureKind.ImportDeclaration,
       namedImports: ['Decimal'],
@@ -245,158 +180,142 @@ var writeImportsForModel = function writeImportsForModel(model, sourceFile, conf
     });
   }
 
-  var relationFields = model.fields.filter(function (f) {
-    return f.kind === 'object';
-  });
+  const relationFields = model.fields.filter(f => f.kind === 'object');
 
   if (config.relationModel !== false && relationFields.length > 0) {
-    var filteredFields = relationFields.filter(function (f) {
-      return f.type !== model.name;
-    });
+    const filteredFields = relationFields.filter(f => f.type !== model.name);
 
     if (filteredFields.length > 0) {
       importList.push({
         kind: tsMorph.StructureKind.ImportDeclaration,
         moduleSpecifier: './index',
-        namedImports: Array.from(new Set(filteredFields.flatMap(function (f) {
-          return ["Complete" + f.type, relatedModelName(f.type)];
-        })))
+        namedImports: Array.from(new Set(filteredFields.flatMap(f => [`Complete${f.type}`, relatedModelName(f.type)])))
       });
     }
   }
 
   sourceFile.addImportDeclarations(importList);
 };
-var writeTypeSpecificSchemas = function writeTypeSpecificSchemas(model, sourceFile, config, _prismaOptions) {
-  if (model.fields.some(function (f) {
-    return f.type === 'Json';
-  })) {
-    sourceFile.addStatements(function (writer) {
+const writeTypeSpecificSchemas = (model, sourceFile, config, _prismaOptions) => {
+  if (model.fields.some(f => f.type === 'Json')) {
+    sourceFile.addStatements(writer => {
       writer.newLine();
-      writeArray(writer, ['// Helper schema for JSON fields', "type JsonObject = { [Key in string]?: JsonValue }", 'type JsonArray = Array<JsonValue>', 'type JsonValue = string | number | boolean | JsonObject | JsonArray | null', "const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])", 'const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))']);
+      writeArray(writer, ['// Helper schema for JSON fields', `type JsonObject = { [Key in string]?: JsonValue }`, 'type JsonArray = Array<JsonValue>', 'type JsonValue = string | number | boolean | JsonObject | JsonArray | null', `const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])`, 'const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))']);
     });
   }
 
-  if (config.useDecimalJs && model.fields.some(function (f) {
-    return f.type === 'Decimal';
-  })) {
-    sourceFile.addStatements(function (writer) {
+  if (config.useDecimalJs && model.fields.some(f => f.type === 'Decimal')) {
+    sourceFile.addStatements(writer => {
       writer.newLine();
       writeArray(writer, ['// Helper schema for Decimal fields', 'z', '.instanceof(Decimal)', '.or(z.string())', '.or(z.number())', '.refine((value) => {', '  try {', '    return new Decimal(value);', '  } catch (error) {', '    return false;', '  }', '})', '.transform((value) => new Decimal(value));']);
     });
   }
 };
-var generateSchemaForModel = function generateSchemaForModel(model, enums, sourceFile, config, _prismaOptions) {
-  var _useModelNames2 = useModelNames(config),
-      modelName = _useModelNames2.modelName;
-
+const generateSchemaForModel = (model, enums, sourceFile, config, _prismaOptions) => {
+  const {
+    modelName
+  } = useModelNames(config);
   sourceFile.addVariableStatement({
     declarationKind: tsMorph.VariableDeclarationKind.Const,
     isExported: true,
-    leadingTrivia: function leadingTrivia(writer) {
-      return writer.blankLineIfLastNot();
-    },
+    leadingTrivia: writer => writer.blankLineIfLastNot(),
     declarations: [{
       name: modelName(model.name),
-      initializer: function initializer(writer) {
-        writer.write('z.object(').inlineBlock(function () {
-          model.fields.filter(function (f) {
-            return f.kind !== 'object';
-          }).forEach(function (field) {
+
+      initializer(writer) {
+        writer.write('z.object(').inlineBlock(() => {
+          model.fields.filter(f => f.kind !== 'object').forEach(field => {
             writeArray(writer, getJSDocs(field.documentation));
-            writer.write(field.name + ": " + getZodConstructor(field, enums)).write(',').newLine();
+            writer.write(`${field.name}: ${getZodConstructor(field, enums, config)}`).write(',').newLine();
           });
         }).write(')');
       }
+
     }]
   });
 };
-var generateRelatedSchemaForModel = function generateRelatedSchemaForModel(model, enums, sourceFile, config, _prismaOptions) {
-  var _useModelNames3 = useModelNames(config),
-      modelName = _useModelNames3.modelName,
-      relatedModelName = _useModelNames3.relatedModelName;
-
-  var relationFields = model.fields.filter(function (f) {
-    return f.kind === 'object';
-  });
+const generateRelatedSchemaForModel = (model, enums, sourceFile, config, _prismaOptions) => {
+  const {
+    modelName,
+    relatedModelName
+  } = useModelNames(config);
+  const relationFields = model.fields.filter(f => f.kind === 'object');
   sourceFile.addInterface({
-    name: "Complete" + model.name,
+    name: `Complete${model.name}`,
     isExported: true,
-    "extends": ["z.infer<typeof " + modelName(model.name) + ">"],
-    properties: relationFields.map(function (f) {
-      return {
-        hasQuestionToken: !f.isRequired,
-        name: f.name,
-        type: "Complete" + f.type + (f.isList ? '[]' : '') + (!f.isRequired ? ' | null' : '')
-      };
-    })
+    extends: [`z.infer<typeof ${modelName(model.name)}>`],
+    properties: relationFields.map(f => ({
+      hasQuestionToken: !f.isRequired,
+      name: f.name,
+      type: `Complete${f.type}${f.isList ? '[]' : ''}${!f.isRequired ? ' | null' : ''}`
+    }))
   });
-  sourceFile.addStatements(function (writer) {
-    return writeArray(writer, ['', '/**', " * " + relatedModelName(model.name) + " contains all relations on your model in addition to the scalars", ' *', ' * NOTE: Lazy required in case of potential circular dependencies within schema', ' */']);
-  });
+  sourceFile.addStatements(writer => writeArray(writer, ['', '/**', ` * ${relatedModelName(model.name)} contains all relations on your model in addition to the scalars`, ' *', ' * NOTE: Lazy required in case of potential circular dependencies within schema', ' */']));
   sourceFile.addVariableStatement({
     declarationKind: tsMorph.VariableDeclarationKind.Const,
     isExported: true,
     declarations: [{
       name: relatedModelName(model.name),
-      type: "z.ZodSchema<Complete" + model.name + ">",
-      initializer: function initializer(writer) {
-        writer.write("z.lazy(() => " + modelName(model.name) + ".extend(").inlineBlock(function () {
-          relationFields.forEach(function (field) {
+      type: `z.ZodSchema<Complete${model.name}>`,
+
+      initializer(writer) {
+        writer.write(`z.lazy(() => ${modelName(model.name)}.extend(`).inlineBlock(() => {
+          relationFields.forEach(field => {
             writeArray(writer, getJSDocs(field.documentation));
-            writer.write(field.name + ": " + getZodConstructor(field, enums, relatedModelName)).write(',').newLine();
+            writer.write(`${field.name}: ${getZodConstructor(field, enums, config, relatedModelName)}`).write(',').newLine();
           });
         }).write('))');
       }
+
     }]
   });
 };
-var populateModelFile = function populateModelFile(model, enums, sourceFile, config, prismaOptions) {
+const populateModelFile = (model, enums, sourceFile, config, prismaOptions) => {
   writeImportsForModel(model, sourceFile, config, prismaOptions);
   writeTypeSpecificSchemas(model, sourceFile, config);
   generateSchemaForModel(model, enums, sourceFile, config);
   if (needsRelatedModel(model, config)) generateRelatedSchemaForModel(model, enums, sourceFile, config);
 };
-var generateBarrelFile = function generateBarrelFile(models, indexFile) {
-  models.forEach(function (model) {
-    return indexFile.addExportDeclaration({
-      moduleSpecifier: "./" + model.name.toLowerCase()
-    });
-  });
+const generateBarrelFile = (models, indexFile) => {
+  models.forEach(model => indexFile.addExportDeclaration({
+    moduleSpecifier: `./${model.name.toLowerCase()}`
+  }));
 };
 
+// @ts-ignore Importing package.json for automated synchronization of version numbers
 generatorHelper.generatorHandler({
-  onManifest: function onManifest() {
+  onManifest() {
     return {
-      version: version,
+      version,
       prettyName: 'Zod Schemas',
       defaultOutput: 'zod'
     };
   },
-  onGenerate: function onGenerate(options) {
+
+  onGenerate(options) {
     var _options$dmmf$schema$, _options$dmmf$schema$2;
 
-    var project = new tsMorph.Project();
-    var models = options.dmmf.datamodel.models;
-    var enums = (_options$dmmf$schema$ = (_options$dmmf$schema$2 = options.dmmf.schema.enumTypes.model) == null ? void 0 : _options$dmmf$schema$2.reduce(function (prev, enumModel) {
-      var _extends2;
-
-      return _extends({}, prev, (_extends2 = {}, _extends2[enumModel.name] = enumModel, _extends2));
+    const project = new tsMorph.Project();
+    const models = options.dmmf.datamodel.models;
+    const enums = (_options$dmmf$schema$ = (_options$dmmf$schema$2 = options.dmmf.schema.enumTypes.model) == null ? void 0 : _options$dmmf$schema$2.reduce((prev, enumModel) => {
+      return { ...prev,
+        [enumModel.name]: enumModel
+      };
     }, {})) != null ? _options$dmmf$schema$ : {};
-    var schemaPath = options.schemaPath;
-    var outputPath = options.generator.output.value;
-    var clientPath = options.otherGenerators.find(function (each) {
-      return each.provider.value === 'prisma-client-js';
-    }).output.value;
-    var results = configSchema.safeParse(options.generator.config);
+    const {
+      schemaPath
+    } = options;
+    const outputPath = options.generator.output.value;
+    const clientPath = options.otherGenerators.find(each => each.provider.value === 'prisma-client-js').output.value;
+    const results = configSchema.safeParse(options.generator.config);
     if (!results.success) throw new Error('Incorrect config provided. Please check the values you provided and try again.');
-    var config = results.data;
-    var prismaOptions = {
-      clientPath: clientPath,
-      outputPath: outputPath,
-      schemaPath: schemaPath
+    const config = results.data;
+    const prismaOptions = {
+      clientPath,
+      outputPath,
+      schemaPath
     };
-    var indexFile = project.createSourceFile(outputPath + "/index.ts", {}, {
+    const indexFile = project.createSourceFile(`${outputPath}/index.ts`, {}, {
       overwrite: true
     });
     generateBarrelFile(models, indexFile);
@@ -405,8 +324,8 @@ generatorHelper.generatorHandler({
       convertTabsToSpaces: true,
       semicolons: typescript.SemicolonPreference.Remove
     });
-    models.forEach(function (model) {
-      var sourceFile = project.createSourceFile(outputPath + "/" + model.name.toLowerCase() + ".ts", {}, {
+    models.forEach(model => {
+      const sourceFile = project.createSourceFile(`${outputPath}/${model.name.toLowerCase()}.ts`, {}, {
         overwrite: true
       });
       populateModelFile(model, enums, sourceFile, config, prismaOptions);
@@ -418,5 +337,6 @@ generatorHelper.generatorHandler({
     });
     return project.save();
   }
+
 });
 //# sourceMappingURL=zod-prisma.cjs.development.js.map

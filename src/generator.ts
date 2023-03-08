@@ -134,7 +134,13 @@ export const generateSchemaForModel = (
 								.forEach((field) => {
 									writeArray(writer, getJSDocs(field.documentation))
 									writer
-										.write(`${field.name}: ${getZodConstructor(field, enums)}`)
+										.write(
+											`${field.name}: ${getZodConstructor(
+												field,
+												enums,
+												config
+											)}`
+										)
 										.write(',')
 										.newLine()
 								})
@@ -200,6 +206,7 @@ export const generateRelatedSchemaForModel = (
 										`${field.name}: ${getZodConstructor(
 											field,
 											enums,
+											config,
 											relatedModelName
 										)}`
 									)

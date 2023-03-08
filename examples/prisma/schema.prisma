@@ -14,12 +14,14 @@ generator zod {
   provider      = "../bin/cli.js"
   output        = "./zod"
   relationModel = "default"
+  languages     = "en,th"
 }
 
 model User {
-  id    Int    @id @default(autoincrement())
-  meta  Json
-  posts Post[]
+  id     Int    @id @default(autoincrement())
+  meta   Json
+  nameTr Json
+  posts  Post[]
 }
 
 model Post {
