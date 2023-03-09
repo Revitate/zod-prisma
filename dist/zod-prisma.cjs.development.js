@@ -200,7 +200,7 @@ const writeTypeSpecificSchemas = (model, sourceFile, config, _prismaOptions) => 
   if (model.fields.some(f => f.type === 'Json')) {
     sourceFile.addStatements(writer => {
       writer.newLine();
-      writeArray(writer, ['// Helper schema for JSON fields', `type JsonObject = { [Key in string]?: JsonValue }`, 'type JsonArray = Array<JsonValue>', 'type JsonValue = string | number | boolean | JsonObject | JsonArray | null', `const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])`, 'const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))']);
+      writeArray(writer, ['// Helper schema for JSON fields', `export type JsonObject = { [Key in string]?: JsonValue }`, 'export type JsonArray = Array<JsonValue>', 'export type JsonValue = string | number | boolean | JsonObject | JsonArray | null', `export const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])`, 'export const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))']);
     });
   }
 
