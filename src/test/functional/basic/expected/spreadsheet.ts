@@ -1,4 +1,4 @@
-import * as z from "zod"
+import * as z from 'zod'
 
 // Helper schema for JSON fields
 export type JsonObject = { [Key in string]?: JsonValue }
@@ -10,10 +10,10 @@ export const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() =>
 )
 
 export const SpreadsheetModel = z.object({
-  id: z.string(),
-  filename: z.string(),
-  author: z.string(),
-  contents: jsonSchema,
-  created: z.date(),
-  updated: z.date(),
+	id: z.string(),
+	filename: z.string(),
+	author: z.string(),
+	contents: jsonSchema,
+	created: z.date(),
+	updated: z.date(),
 })

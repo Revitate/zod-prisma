@@ -82,7 +82,7 @@ export const writeTypeSpecificSchemas = (
 				'export type JsonArray = Array<JsonValue>',
 				'export type JsonValue = string | number | boolean | JsonObject | JsonArray | null',
 				`export const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])`,
-				'export const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() =>\n\tz.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)])\n)',
+				'export const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))',
 			])
 		})
 	}

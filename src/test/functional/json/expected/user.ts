@@ -1,5 +1,5 @@
-import * as z from "zod"
-import { CompletePost, RelatedPostModel } from "./index"
+import * as z from 'zod'
+import { CompletePost, RelatedPostModel } from './index'
 
 // Helper schema for JSON fields
 export type JsonObject = { [Key in string]?: JsonValue }
@@ -11,12 +11,12 @@ export const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() =>
 )
 
 export const UserModel = z.object({
-  id: z.number().int(),
-  meta: jsonSchema,
+	id: z.number().int(),
+	meta: jsonSchema,
 })
 
 export interface CompleteUser extends z.infer<typeof UserModel> {
-  posts: CompletePost[]
+	posts: CompletePost[]
 }
 
 /**
@@ -24,6 +24,8 @@ export interface CompleteUser extends z.infer<typeof UserModel> {
  *
  * NOTE: Lazy required in case of potential circular dependencies within schema
  */
-export const RelatedUserModel: z.ZodSchema<CompleteUser> = z.lazy(() => UserModel.extend({
-  posts: RelatedPostModel.array(),
-}))
+export const RelatedUserModel: z.ZodSchema<CompleteUser> = z.lazy(() =>
+	UserModel.extend({
+		posts: RelatedPostModel.array(),
+	})
+)

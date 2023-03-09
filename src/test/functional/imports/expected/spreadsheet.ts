@@ -1,5 +1,5 @@
-import * as z from "zod"
-import { CompletePresentation, RelatedPresentationModel } from "./index"
+import * as z from 'zod'
+import { CompletePresentation, RelatedPresentationModel } from './index'
 
 // Helper schema for JSON fields
 export type JsonObject = { [Key in string]?: JsonValue }
@@ -11,16 +11,16 @@ export const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() =>
 )
 
 export const SpreadsheetModel = z.object({
-  id: z.string(),
-  filename: z.string(),
-  author: z.string(),
-  contents: jsonSchema,
-  created: z.date(),
-  updated: z.date(),
+	id: z.string(),
+	filename: z.string(),
+	author: z.string(),
+	contents: jsonSchema,
+	created: z.date(),
+	updated: z.date(),
 })
 
 export interface CompleteSpreadsheet extends z.infer<typeof SpreadsheetModel> {
-  presentations: CompletePresentation[]
+	presentations: CompletePresentation[]
 }
 
 /**
@@ -28,6 +28,8 @@ export interface CompleteSpreadsheet extends z.infer<typeof SpreadsheetModel> {
  *
  * NOTE: Lazy required in case of potential circular dependencies within schema
  */
-export const RelatedSpreadsheetModel: z.ZodSchema<CompleteSpreadsheet> = z.lazy(() => SpreadsheetModel.extend({
-  presentations: RelatedPresentationModel.array(),
-}))
+export const RelatedSpreadsheetModel: z.ZodSchema<CompleteSpreadsheet> = z.lazy(() =>
+	SpreadsheetModel.extend({
+		presentations: RelatedPresentationModel.array(),
+	})
+)
