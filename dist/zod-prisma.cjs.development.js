@@ -92,6 +92,11 @@ function createJsonHelperFile(project, outputPath, indexFile) {
   const sourceFile = project.createSourceFile(`${outputPath}/utils/json.ts`, {}, {
     overwrite: true
   });
+  sourceFile.addImportDeclarations([{
+    kind: tsMorph.StructureKind.ImportDeclaration,
+    namespaceImport: 'z',
+    moduleSpecifier: 'zod'
+  }]);
   sourceFile.addStatements(writer => {
     writer.newLine();
     writeArray(writer, ['// Helper schema for JSON fields', `export type JsonObject = { [Key in string]?: JsonValue }`, 'export type JsonArray = Array<JsonValue>', 'export type JsonValue = string | number | boolean | JsonObject | JsonArray | null', `export const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])`, 'export const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))']);

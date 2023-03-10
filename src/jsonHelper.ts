@@ -1,4 +1,4 @@
-import { Project, SourceFile } from 'ts-morph'
+import { Project, SourceFile, StructureKind } from 'ts-morph'
 import { writeArray } from './util'
 
 let needJsonHelper = false
@@ -14,6 +14,14 @@ export function createJsonHelperFile(project: Project, outputPath: string, index
 		{},
 		{ overwrite: true }
 	)
+
+	sourceFile.addImportDeclarations([
+		{
+			kind: StructureKind.ImportDeclaration,
+			namespaceImport: 'z',
+			moduleSpecifier: 'zod',
+		},
+	])
 
 	sourceFile.addStatements((writer) => {
 		writer.newLine()
