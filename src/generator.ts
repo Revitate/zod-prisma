@@ -8,6 +8,7 @@ import {
 } from 'ts-morph'
 import { Config, PrismaOptions } from './config'
 import { getJSDocs } from './docs'
+import { setNeedJsonHelper } from './jsonHelper'
 import { EnumModel, getZodConstructor } from './types'
 import { dotSlash, needsRelatedModel, useModelNames, writeArray } from './util'
 
@@ -43,6 +44,17 @@ export const writeImportsForModel = (
 			moduleSpecifier: 'decimal.js',
 		})
 	}
+
+	if (model.fields.some((f) => f.type === 'Json' && !f.name.endsWith('Tr'))) {
+		importList.push({
+			kind: StructureKind.ImportDeclaration,
+			namedImports: ['jsonSchema'],
+			moduleSpecifier: './utils/json',
+		})
+
+		setNeedJsonHelper(true)
+	}
+
 	const relationFields = model.fields.filter((f) => f.kind === 'object')
 
 	if (config.relationModel !== false && relationFields.length > 0) {
@@ -73,20 +85,6 @@ export const writeTypeSpecificSchemas = (
 	config: Config,
 	_prismaOptions: PrismaOptions
 ) => {
-	if (model.fields.some((f) => f.type === 'Json')) {
-		sourceFile.addStatements((writer) => {
-			writer.newLine()
-			writeArray(writer, [
-				'// Helper schema for JSON fields',
-				`export type JsonObject = { [Key in string]?: JsonValue }`,
-				'export type JsonArray = Array<JsonValue>',
-				'export type JsonValue = string | number | boolean | JsonObject | JsonArray | null',
-				`export const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])`,
-				'export const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))',
-			])
-		})
-	}
-
 	if (config.useDecimalJs && model.fields.some((f) => f.type === 'Decimal')) {
 		sourceFile.addStatements((writer) => {
 			writer.newLine()

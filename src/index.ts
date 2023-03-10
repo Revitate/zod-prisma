@@ -6,6 +6,7 @@ import { Project } from 'ts-morph'
 import { SemicolonPreference } from 'typescript'
 import { configSchema, PrismaOptions } from './config'
 import { generateBarrelFile, populateModelFile } from './generator'
+import { createJsonHelperFile } from './jsonHelper'
 import { EnumModel } from './types'
 
 generatorHandler({
@@ -73,6 +74,8 @@ generatorHandler({
 				semicolons: SemicolonPreference.Remove,
 			})
 		})
+
+		createJsonHelperFile(project, outputPath, indexFile)
 
 		return project.save()
 	},

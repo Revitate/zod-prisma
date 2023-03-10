@@ -33,6 +33,7 @@ model Post {
 model Data {
   id   Int      @id @default(autoincrement())
   type DataType
+  data Json
 }
 
 enum DataType {

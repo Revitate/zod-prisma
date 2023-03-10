@@ -82,6 +82,25 @@ const computeModifiers = docString => {
   return getZodDocElements(docString).filter(each => !each.startsWith('custom('));
 };
 
+let needJsonHelper = false;
+const setNeedJsonHelper = value => needJsonHelper = value;
+function createJsonHelperFile(project, outputPath, indexFile) {
+  if (!needJsonHelper) {
+    return;
+  }
+
+  const sourceFile = project.createSourceFile(`${outputPath}/utils/json.ts`, {}, {
+    overwrite: true
+  });
+  sourceFile.addStatements(writer => {
+    writer.newLine();
+    writeArray(writer, ['// Helper schema for JSON fields', `export type JsonObject = { [Key in string]?: JsonValue }`, 'export type JsonArray = Array<JsonValue>', 'export type JsonValue = string | number | boolean | JsonObject | JsonArray | null', `export const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])`, 'export const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))']);
+  });
+  indexFile.addExportDeclaration({
+    moduleSpecifier: `./utils/json`
+  });
+}
+
 const getZodConstructor = (field, enums, config, getRelatedModelName = name => name.toString()) => {
   let zodType = 'z.unknown()';
   let extraModifiers = [''];
@@ -180,6 +199,15 @@ const writeImportsForModel = (model, sourceFile, config, {
     });
   }
 
+  if (model.fields.some(f => f.type === 'Json' && !f.name.endsWith('Tr'))) {
+    importList.push({
+      kind: tsMorph.StructureKind.ImportDeclaration,
+      namedImports: ['jsonSchema'],
+      moduleSpecifier: './utils/json'
+    });
+    setNeedJsonHelper(true);
+  }
+
   const relationFields = model.fields.filter(f => f.kind === 'object');
 
   if (config.relationModel !== false && relationFields.length > 0) {
@@ -197,13 +225,6 @@ const writeImportsForModel = (model, sourceFile, config, {
   sourceFile.addImportDeclarations(importList);
 };
 const writeTypeSpecificSchemas = (model, sourceFile, config, _prismaOptions) => {
-  if (model.fields.some(f => f.type === 'Json')) {
-    sourceFile.addStatements(writer => {
-      writer.newLine();
-      writeArray(writer, ['// Helper schema for JSON fields', `export type JsonObject = { [Key in string]?: JsonValue }`, 'export type JsonArray = Array<JsonValue>', 'export type JsonValue = string | number | boolean | JsonObject | JsonArray | null', `export const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()])`, 'export const jsonSchema: z.ZodSchema<JsonValue> = z.lazy(() => z.union([literalSchema, z.array(jsonSchema), z.record(jsonSchema)]))']);
-    });
-  }
-
   if (config.useDecimalJs && model.fields.some(f => f.type === 'Decimal')) {
     sourceFile.addStatements(writer => {
       writer.newLine();
@@ -335,6 +356,7 @@ generatorHelper.generatorHandler({
         semicolons: typescript.SemicolonPreference.Remove
       });
     });
+    createJsonHelperFile(project, outputPath, indexFile);
     return project.save();
   }
 
