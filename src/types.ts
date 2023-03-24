@@ -7,7 +7,8 @@ export const getZodConstructor = (
 	enums: EnumModel,
 	config: Config,
 	getRelatedModelName = (name: string | DMMF.SchemaEnum | DMMF.OutputType | DMMF.SchemaArg) =>
-		name.toString()
+		name.toString(),
+	genTr = true
 ) => {
 	let zodType = 'z.unknown()'
 	let extraModifiers: string[] = ['']
@@ -33,9 +34,9 @@ export const getZodConstructor = (
 				zodType = 'z.number()'
 				break
 			case 'Json':
-				if (field.name.endsWith('Tr')) {
+				if (genTr && field.name.endsWith('Tr')) {
 					zodType = `z.object({${config.languages
-						.map((lang) => `${lang}: z.string()`)
+						.map((lang) => `${lang}: z.string().optional()`)
 						.join(', ')}})`
 				} else {
 					zodType = 'jsonSchema'

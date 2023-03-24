@@ -106,7 +106,7 @@ function createJsonHelperFile(project, outputPath, indexFile) {
   });
 }
 
-const getZodConstructor = (field, enums, config, getRelatedModelName = name => name.toString()) => {
+const getZodConstructor = (field, enums, config, getRelatedModelName = name => name.toString(), genTr = true) => {
   let zodType = 'z.unknown()';
   let extraModifiers = [''];
 
@@ -138,8 +138,8 @@ const getZodConstructor = (field, enums, config, getRelatedModelName = name => n
         break;
 
       case 'Json':
-        if (field.name.endsWith('Tr')) {
-          zodType = `z.object({${config.languages.map(lang => `${lang}: z.string()`).join(', ')}})`;
+        if (genTr && field.name.endsWith('Tr')) {
+          zodType = `z.object({${config.languages.map(lang => `${lang}: z.string().optional()`).join(', ')}})`;
         } else {
           zodType = 'jsonSchema';
         }
@@ -204,7 +204,7 @@ const writeImportsForModel = (model, sourceFile, config, {
     });
   }
 
-  if (model.fields.some(f => f.type === 'Json' && !f.name.endsWith('Tr'))) {
+  if (model.fields.some(f => f.type === 'Json')) {
     importList.push({
       kind: tsMorph.StructureKind.ImportDeclaration,
       namedImports: ['jsonSchema'],
@@ -259,6 +259,27 @@ const generateSchemaForModel = (model, enums, sourceFile, config, _prismaOptions
 
     }]
   });
+
+  if (model.fields.some(f => f.type === 'Json' && f.name.endsWith('Tr'))) {
+    sourceFile.addVariableStatement({
+      declarationKind: tsMorph.VariableDeclarationKind.Const,
+      isExported: true,
+      leadingTrivia: writer => writer.blankLineIfLastNot(),
+      declarations: [{
+        name: `${modelName(model.name)}Response`,
+
+        initializer(writer) {
+          writer.write('z.object(').inlineBlock(() => {
+            model.fields.filter(f => f.kind !== 'object').forEach(field => {
+              writeArray(writer, getJSDocs(field.documentation));
+              writer.write(`${field.name}: ${getZodConstructor(field, enums, config, undefined, false)}`).write(',').newLine();
+            });
+          }).write(')');
+        }
+
+      }]
+    });
+  }
 };
 const generateRelatedSchemaForModel = (model, enums, sourceFile, config, _prismaOptions) => {
   const {

@@ -45,7 +45,7 @@ export const writeImportsForModel = (
 		})
 	}
 
-	if (model.fields.some((f) => f.type === 'Json' && !f.name.endsWith('Tr'))) {
+	if (model.fields.some((f) => f.type === 'Json')) {
 		importList.push({
 			kind: StructureKind.ImportDeclaration,
 			namedImports: ['jsonSchema'],
@@ -148,6 +148,43 @@ export const generateSchemaForModel = (
 			},
 		],
 	})
+
+	if (model.fields.some((f) => f.type === 'Json' && f.name.endsWith('Tr'))) {
+		sourceFile.addVariableStatement({
+			declarationKind: VariableDeclarationKind.Const,
+			isExported: true,
+			leadingTrivia: (writer) => writer.blankLineIfLastNot(),
+			declarations: [
+				{
+					name: `${modelName(model.name)}Response`,
+					initializer(writer) {
+						writer
+							.write('z.object(')
+							.inlineBlock(() => {
+								model.fields
+									.filter((f) => f.kind !== 'object')
+									.forEach((field) => {
+										writeArray(writer, getJSDocs(field.documentation))
+										writer
+											.write(
+												`${field.name}: ${getZodConstructor(
+													field,
+													enums,
+													config,
+													undefined,
+													false
+												)}`
+											)
+											.write(',')
+											.newLine()
+									})
+							})
+							.write(')')
+					},
+				},
+			],
+		})
+	}
 }
 
 export const generateRelatedSchemaForModel = (
