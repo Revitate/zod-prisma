@@ -139,7 +139,7 @@ const getZodConstructor = (field, enums, config, getRelatedModelName = name => n
 
       case 'Json':
         if (genTr && field.name.endsWith('Tr')) {
-          zodType = `z.object({${config.languages.map(lang => `${lang}: z.string().optional()`).join(', ')}})`;
+          zodType = `z.object({${config.languages.map(lang => `${lang}: z.string()`).join(', ')}})`;
         } else {
           zodType = 'jsonSchema';
         }
